@@ -84,12 +84,18 @@ In `eshell', fish completion is only used when `pcomplete' fails."
       (add-hook 'eshell-mode-hook (lambda () (fish-completion-mode 1)) nil t))
   (fish-completion-mode 1))
 
-(define-globalized-minor-mode global-fish-completion-mode fish-completion-mode turn-on-fish-completion-mode)
+(define-globalized-minor-mode global-fish-completion-mode
+  fish-completion-mode
+  turn-on-fish-completion-mode)
 
 (defun fish-completion-shell-complete ()
   "Complete `shell' or `eshell' prompt with `fish-completion-complete'."
   (fish-completion-complete (buffer-substring-no-properties
-                             (save-excursion (if (eq major-mode 'shell-mode) (comint-bol) (eshell-bol)) (point)) (point))))
+                             (save-excursion (if (eq major-mode 'shell-mode)
+                                                 (comint-bol)
+                                               (eshell-bol))
+                                             (point))
+                             (point))))
 
 (defun fish-completion-complete (raw-prompt)
   "Complete RAW-PROMPT (any string) using the fish shell.
@@ -127,7 +133,10 @@ no completion was found with fish."
                            (split-string
                             (with-output-to-string
                               (with-current-buffer standard-output
-                                (call-process fish-completion-command nil t nil "-c" (format "complete -C%s" (shell-quote-argument prompt)))))
+                                (call-process fish-completion-command nil t nil
+                                              "-c"
+                                              (format "complete -C%s"
+                                                      (shell-quote-argument prompt)))))
                             "\n" t)))))
             (if (and fish-completion-fallback-on-bash-p
                      (or (not comp-list)
