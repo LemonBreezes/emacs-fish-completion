@@ -142,10 +142,16 @@ no completion was found with fish."
                      (or (not comp-list)
                          (file-exists-p (car comp-list)))
                      (require 'bash-completion nil t))
-                (nth 2 (bash-completion-dynamic-complete-nocomint (save-excursion (eshell-bol) (point)) (point)))
+                ;; Remove trailing spaces of bash completion entries. (Does this only
+                ;; occurs when there is 1 completion item?)
+                ;; TODO: Maybe this should be fixed in bash-completion instead.
+                (mapcar 'string-trim-right
+                        (nth 2 (bash-completion-dynamic-complete-nocomint
+                                (save-excursion (eshell-bol) (point)) (point))))
               (if (and comp-list (file-exists-p (car comp-list)))
                   (pcomplete-dirs-or-entries)
-                comp-list))))))
+                ;; Remove trailing spaces to avoid it being converted into "\ ".
+                (mapcar 'string-trim-right comp-list)))))))
 
 (provide 'fish-completion)
 ;;; fish-completion.el ends here
