@@ -43,6 +43,7 @@
 ;;; Code:
 
 (require 'em-cmpl)
+(require 'subr-x)
 
 (defgroup fish-completion nil
   "Settings for fish completion in Eshell and Shell."
