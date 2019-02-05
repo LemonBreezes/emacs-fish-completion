@@ -146,8 +146,13 @@ no completion was found with fish."
                 ;; occurs when there is 1 completion item?)
                 ;; TODO: Maybe this should be fixed in bash-completion instead.
                 (mapcar 'string-trim-right
-                        (nth 2 (bash-completion-dynamic-complete-nocomint
-                                (save-excursion (eshell-bol) (point)) (point))))
+                        (mapcar (lambda (s)
+                                  ;; bash-completion inserts "\" to escape white
+                                  ;; spaces, we need to remove them since
+                                  ;; pcomplete does that too.
+                                  (replace-regexp-in-string (regexp-quote "\\") "" s))
+                                (nth 2 (bash-completion-dynamic-complete-nocomint
+                                        (save-excursion (eshell-bol) (point)) (point)))))
               (if (and comp-list (file-exists-p (car comp-list)))
                   (pcomplete-dirs-or-entries)
                 ;; Remove trailing spaces to avoid it being converted into "\ ".
