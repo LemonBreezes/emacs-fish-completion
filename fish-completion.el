@@ -44,16 +44,22 @@
 
 (require 'em-cmpl)
 
+(defgroup fish-completion nil
+  "Settings for fish completion in Eshell and Shell."
+  :group 'shell)
+
 (defvar fish-completion-command "fish"
   "The `fish' executable.")
 
 (defvar fish-completion--old-completion-function nil)
 (make-variable-buffer-local 'fish-completion--old-completion-function)
 
-(defvar fish-completion-fallback-on-bash-p nil
+(defcustom fish-completion-fallback-on-bash-p nil
   "Fall back on bash completion if possible.
 If non-nil, Fish file completion is ignored.
-This requires the bash-completion package.")
+This requires the bash-completion package."
+  :type 'boolean
+  :group 'fish-completion)
 
 ;;;###autoload
 (define-minor-mode fish-completion-mode
