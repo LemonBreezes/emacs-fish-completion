@@ -1,6 +1,6 @@
 ;;; fish-completion.el --- Add fish completion to pcomplete (shell and Eshell)  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2017 Pierre Neidhardt
+;; Copyright (C) 2017-2019 Pierre Neidhardt
 
 ;; Author: Pierre Neidhardt <mail@ambrevar.xyz>
 ;; Homepage: https://gitlab.com/Ambrevar/emacs-fish-completion
@@ -52,7 +52,7 @@
 
 (defvar fish-completion-fallback-on-bash-p nil
   "Fall back on bash completion if possible.
-
+If non-nil, Fish file completion is ignored.
 This requires the bash-completion package.")
 
 ;;;###autoload
@@ -123,8 +123,9 @@ no completion was found with fish."
                               (with-current-buffer standard-output
                                 (call-process fish-completion-command nil t nil "-c" (format "complete -C%s" (shell-quote-argument prompt)))))
                             "\n" t)))))
-            (if (and (not comp-list)
-                     fish-completion-fallback-on-bash-p
+            (if (and fish-completion-fallback-on-bash-p
+                     (or (not comp-list)
+                         (file-exists-p (car comp-list)))
                      (require 'bash-completion nil t))
                 (nth 2 (bash-completion-dynamic-complete-nocomint (save-excursion (eshell-bol) (point)) (point)))
               (if (and comp-list (file-exists-p (car comp-list)))
