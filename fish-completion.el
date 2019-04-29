@@ -139,25 +139,22 @@ no completion was found with fish."
                                               (format "complete -C%s"
                                                       (shell-quote-argument prompt)))))
                             "\n" t)))))
-            (if (and fish-completion-fallback-on-bash-p
-                     (or (not comp-list)
-                         (file-exists-p (car comp-list)))
-                     (require 'bash-completion nil t))
-                ;; Remove trailing spaces of bash completion entries. (Does this only
-                ;; occurs when there is 1 completion item?)
-                ;; TODO: Maybe this should be fixed in bash-completion instead.
-                (mapcar 'string-trim-right
-                        (mapcar (lambda (s)
-                                  ;; bash-completion inserts "\" to escape white
-                                  ;; spaces, we need to remove them since
-                                  ;; pcomplete does that too.
-                                  (replace-regexp-in-string (regexp-quote "\\") "" s))
-                                (nth 2 (bash-completion-dynamic-complete-nocomint
-                                        (save-excursion (eshell-bol) (point)) (point)))))
-              (if (and comp-list (file-exists-p (car comp-list)))
-                  (pcomplete-dirs-or-entries)
-                ;; Remove trailing spaces to avoid it being converted into "\ ".
-                (mapcar 'string-trim-right comp-list)))))))
+            (when (and fish-completion-fallback-on-bash-p
+                       (or (not comp-list)
+                           (file-exists-p (car comp-list)))
+                       (require 'bash-completion nil t))
+              (setq comp-list
+                    (mapcar (lambda (s)
+                              ;; bash-completion inserts "\" to escape white
+                              ;; spaces, we need to remove them since
+                              ;; pcomplete does that too.
+                              (replace-regexp-in-string (regexp-quote "\\") "" s))
+                            (nth 2 (bash-completion-dynamic-complete-nocomint
+                                    (save-excursion (eshell-bol) (point)) (point))))))
+            (if (and comp-list (file-exists-p (car comp-list)))
+                (pcomplete-dirs-or-entries)
+              ;; Remove trailing spaces to avoid it being converted into "\ ".
+              (mapcar 'string-trim-right comp-list))))))
 
 (provide 'fish-completion)
 ;;; fish-completion.el ends here
