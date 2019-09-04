@@ -98,6 +98,8 @@ In `eshell', fish completion is only used when `pcomplete' fails."
                                              (point))
                              (point))))
 
+(declare-function bash-completion-dynamic-complete-nocomint "ext:bash-completion")
+
 (defun fish-completion-complete (raw-prompt)
   "Complete RAW-PROMPT (any string) using the fish shell.
 
