@@ -90,13 +90,17 @@ In `eshell', fish completion is only used when `pcomplete' fails."
   turn-on-fish-completion-mode)
 
 (defun fish-completion-shell-complete ()
-  "Complete `shell' or `eshell' prompt with `fish-completion-complete'."
-  (fish-completion-complete (buffer-substring-no-properties
-                             (save-excursion (if (eq major-mode 'shell-mode)
-                                                 (comint-bol)
-                                               (eshell-bol))
-                                             (point))
-                             (point))))
+  "Complete `shell' or `eshell' prompt with `fish-completion-complete'.
+If we are in a remote location, use the old completion function instead,
+since we rely on a local fish instance to suggest the completions."
+  (if (file-remote-p default-directory)
+      (funcall fish-completion--old-completion-function)
+    (fish-completion-complete (buffer-substring-no-properties
+                               (save-excursion (if (eq major-mode 'shell-mode)
+                                                   (comint-bol)
+                                                 (eshell-bol))
+                                               (point))
+                               (point)))))
 
 (declare-function bash-completion-dynamic-complete-nocomint "ext:bash-completion")
 
