@@ -123,15 +123,22 @@ no completion was found with fish."
                         ;; a special case of 'sudo' and 'env' since they are
                         ;; the most common cases involving subcommands.  See
                         ;; https://github.com/fish-shell/fish-shell/issues/4093.
-                        (prompt (if (not (member (car tokens) '("sudo" "env")))
+                        (prompt (if (not (member (car tokens) '("sudo" "*sudo" "env" "*env")))
                                     raw-prompt
                                   (setq tokens (cdr tokens))
                                   (while (and tokens
                                               (or (string-match "^-.*" (car tokens))
                                                   (string-match "=" (car tokens))))
-                                    ;; Skip env/sudo parameters, like LC_ALL=C.
+                                    ;; Skip env/sudo parameters, like -u and LC_ALL=C.
                                     (setq tokens (cdr tokens)))
-                                  (mapconcat 'identity tokens " "))))
+                                  (if (and tokens (not (string-empty-p (car tokens))))
+                                      (mapconcat 'identity tokens " ")
+                                    ;; If there is no subcommand, then we
+                                    ;; complete against the parent command.
+                                    raw-prompt))))
+                   ;; Eshell supports star-prefixed commands but not Fish:
+                   ;; remove the star for fish-completion.
+                   (setq prompt (replace-regexp-in-string "^[[:space:]]*\\*" "" prompt))
                    ;; Completion result can be a filename.  pcomplete expects
                    ;; cannonical file names (i.e. without '~') while fish preserves
                    ;; non-cannonical results.  If the result contains a directory,
