@@ -104,14 +104,23 @@ since we rely on a local fish instance to suggest the completions."
 
 (declare-function bash-completion-dynamic-complete-nocomint "ext:bash-completion")
 
+(defun fish-completion--call (command &rest args)
+  "Return the output of the call to COMMAND ARGS as a string."
+  (with-output-to-string
+    (with-current-buffer standard-output
+      (apply #'call-process
+             command
+             nil '(t nil) nil
+             args))))
+
 (defun fish-completion--list-completions (raw-prompt)
-  (let* (;; Keep spaces at the end with OMIT-NULLS=nil in `split-string'.
-         (toks (split-string raw-prompt split-string-default-separators nil))
-         ;; The first non-empty `car' is the command.  Discard
+  (let* (;; We *must* keep spaces at the end because completion on "ls" and "ls
+         ;; " is different, so keep OMIT-NULLS to nil in `split-string'.
+         ;; The first non-empty `car' is the command, we can discard
          ;; leading empty strings.
-         (tokens (progn (while (string= (car toks) "")
-                          (setq toks (cdr toks)))
-                        toks))
+         (tokens (seq-drop-while #'string-empty-p
+                                 (split-string raw-prompt
+                                               split-string-default-separators nil)))
          ;; Fish does not support subcommand completion.  We make
          ;; a special case of 'sudo' and 'env' since they are
          ;; the most common cases involving subcommands.  See
@@ -138,12 +147,9 @@ since we rely on a local fish instance to suggest the completions."
     ;; expand it.
     (mapcar (lambda (e) (car (split-string e "\t")))
             (split-string
-             (with-output-to-string
-               (with-current-buffer standard-output
-                 (call-process fish-completion-command nil '(t nil) nil
-                               "-c"
-                               (format "complete -C%s"
-                                       (shell-quote-argument prompt)))))
+             (fish-completion--call fish-completion-command
+                                    "-c" (format "complete -C%s"
+                                                 (shell-quote-argument prompt)))
              "\n" t))))
 
 (defun fish-completion-complete (raw-prompt)
