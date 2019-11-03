@@ -116,35 +116,41 @@ since we rely on a local fish instance to suggest the completions."
              nil '(t nil) nil
              args))))
 
+(defvar fish-completion--parent-commands '("sudo" "env")
+  "List of commands that that take other commands as argument.
+We need to list those commands manually so that we can complete
+against their subcommands.  Fish does not support subcommand
+completion.  See
+https://github.com/fish-shell/fish-shell/issues/4093.")
+
+(defun fish-completion--normalize-prompt (prompt)
+  "Return a prompt that can be understood by Fish."
+  ;; Eshell supports star-prefixed commands but not Fish:
+  ;; remove the star for fish-completion.
+  (setq prompt (replace-regexp-in-string "^[[:space:]]*\\*" "" prompt))
+  (let (;; We *must* keep spaces at the end because completion on "ls" and "ls "
+        ;; is different, so keep OMIT-NULLS to nil in `split-string'.  The first
+        ;; non-empty `car' is the command, we can discard leading empty strings.
+        (tokens (split-string prompt
+                              split-string-default-separators nil)))
+    (if (not (member (car tokens) fish-completion--parent-commands))
+        prompt
+      (setq tokens (cdr tokens))
+      (while (and tokens
+                  (or (string-match "^-.*" (car tokens))
+                      (string-match "=" (car tokens))))
+        ;; Skip env/sudo parameters, like -u and LC_ALL=C.
+        (setq tokens (cdr tokens)))
+      (if (and tokens (not (string-empty-p (car tokens))))
+          (mapconcat 'identity tokens " ")
+        ;; If there is no subcommand, then we
+        ;; complete against the parent command.
+        (message "NO SUB %S" prompt)
+        prompt))))
+
 (defun fish-completion--list-completions (raw-prompt)
-  (let* (;; We *must* keep spaces at the end because completion on "ls" and "ls
-         ;; " is different, so keep OMIT-NULLS to nil in `split-string'.
-         ;; The first non-empty `car' is the command, we can discard
-         ;; leading empty strings.
-         (tokens (seq-drop-while #'string-empty-p
-                                 (split-string raw-prompt
-                                               split-string-default-separators nil)))
-         ;; Fish does not support subcommand completion.  We make
-         ;; a special case of 'sudo' and 'env' since they are
-         ;; the most common cases involving subcommands.  See
-         ;; https://github.com/fish-shell/fish-shell/issues/4093.
-         (prompt (if (not (member (car tokens) '("sudo" "*sudo" "env" "*env")))
-                     raw-prompt
-                   (setq tokens (cdr tokens))
-                   (while (and tokens
-                               (or (string-match "^-.*" (car tokens))
-                                   (string-match "=" (car tokens))))
-                     ;; Skip env/sudo parameters, like -u and LC_ALL=C.
-                     (setq tokens (cdr tokens)))
-                   (if (and tokens (not (string-empty-p (car tokens))))
-                       (mapconcat 'identity tokens " ")
-                     ;; If there is no subcommand, then we
-                     ;; complete against the parent command.
-                     raw-prompt))))
-    ;; Eshell supports star-prefixed commands but not Fish:
-    ;; remove the star for fish-completion.
-    (setq prompt (replace-regexp-in-string "^[[:space:]]*\\*" "" prompt))
-    ;; Discard descriptions.
+  "Return list of completion candidates for RAW-PROMPT."
+  (let ((prompt (fish-completion--normalize-prompt raw-prompt)))
     (mapcar (lambda (e) (car (split-string e "\t")))
             (split-string
              (fish-completion--call fish-completion-command
