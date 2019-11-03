@@ -158,26 +158,34 @@ https://github.com/fish-shell/fish-shell/issues/4093.")
                                                  (shell-quote-argument prompt)))
              "\n" t))))
 
+(defun fish-completion--maybe-use-bash (comp-list)
+  "If COMP-LIST is empty, return a completion list with Bash.
+
+If COMP-LIST contains file names, it may mean that fish has used
+its fallback completion because it does not know better.
+In this case, we fall back on Bash as well.
+
+Bash is only used if `fish-completion-fallback-on-bash-p' is non-nil and the
+bash-completion package is available.."
+  (when (and fish-completion-fallback-on-bash-p
+             (or (not comp-list)
+                 (file-exists-p (car comp-list)))
+             (require 'bash-completion nil 'noerror))
+    (setq comp-list
+          (mapcar (lambda (s)
+                    ;; bash-completion inserts "\" to escape white
+                    ;; spaces, we need to remove them since
+                    ;; pcomplete does that too.
+                    (replace-regexp-in-string (regexp-quote "\\") "" s))
+                  (nth 2 (bash-completion-dynamic-complete-nocomint
+                          (save-excursion (eshell-bol) (point)) (point)))))))
+
 (defun fish-completion-complete (raw-prompt)
   "Complete RAW-PROMPT (any string) using the fish shell.
-
-If `fish-completion-fallback-on-bash-p' is non-nil and if the
-`bash-completion' package is available, fall back on bash in case
-no completion was found with fish."
+Fall back on bash with `fish-completion--maybe-use-bash'."
   (while (pcomplete-here
           (let ((comp-list (fish-completion--list-completions raw-prompt)))
-            (when (and fish-completion-fallback-on-bash-p
-                       (or (not comp-list)
-                           (file-exists-p (car comp-list)))
-                       (require 'bash-completion nil t))
-              (setq comp-list
-                    (mapcar (lambda (s)
-                              ;; bash-completion inserts "\" to escape white
-                              ;; spaces, we need to remove them since
-                              ;; pcomplete does that too.
-                              (replace-regexp-in-string (regexp-quote "\\") "" s))
-                            (nth 2 (bash-completion-dynamic-complete-nocomint
-                                    (save-excursion (eshell-bol) (point)) (point))))))
+            (setq comp-list (fish-completion--maybe-use-bash comp-list))
             (if (and comp-list (file-exists-p (car comp-list)))
                 ;; Completion result can be a filename.  pcomplete expects
                 ;; cannonical file names (i.e. without '~') while fish preserves
