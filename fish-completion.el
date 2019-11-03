@@ -171,18 +171,19 @@ In this case, we fall back on Bash as well.
 
 Bash is only used if `fish-completion-fallback-on-bash-p' is non-nil and the
 bash-completion package is available.."
-  (when (and fish-completion-fallback-on-bash-p
-             (or (not comp-list)
-                 (file-exists-p (car comp-list)))
-             (require 'bash-completion nil 'noerror))
-    (setq comp-list
-          (mapcar (lambda (s)
-                    ;; bash-completion inserts "\" to escape white
-                    ;; spaces, we need to remove them since
-                    ;; pcomplete does that too.
-                    (replace-regexp-in-string (regexp-quote "\\") "" s))
-                  (nth 2 (bash-completion-dynamic-complete-nocomint
-                          (save-excursion (eshell-bol) (point)) (point)))))))
+  (if (and fish-completion-fallback-on-bash-p
+           (or (not comp-list)
+               (file-exists-p (car comp-list)))
+           (require 'bash-completion nil 'noerror))
+      (setq comp-list
+            (mapcar (lambda (s)
+                      ;; bash-completion inserts "\" to escape white
+                      ;; spaces, we need to remove them since
+                      ;; pcomplete does that too.
+                      (replace-regexp-in-string (regexp-quote "\\") "" s))
+                    (nth 2 (bash-completion-dynamic-complete-nocomint
+                            (save-excursion (eshell-bol) (point)) (point)))))
+    comp-list))
 
 (defun fish-completion-complete (raw-prompt)
   "Complete RAW-PROMPT (any string) using the fish shell.
