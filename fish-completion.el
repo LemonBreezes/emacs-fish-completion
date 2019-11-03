@@ -104,6 +104,48 @@ since we rely on a local fish instance to suggest the completions."
 
 (declare-function bash-completion-dynamic-complete-nocomint "ext:bash-completion")
 
+(defun fish-completion--list-completions (raw-prompt)
+  (let* (;; Keep spaces at the end with OMIT-NULLS=nil in `split-string'.
+         (toks (split-string raw-prompt split-string-default-separators nil))
+         ;; The first non-empty `car' is the command.  Discard
+         ;; leading empty strings.
+         (tokens (progn (while (string= (car toks) "")
+                          (setq toks (cdr toks)))
+                        toks))
+         ;; Fish does not support subcommand completion.  We make
+         ;; a special case of 'sudo' and 'env' since they are
+         ;; the most common cases involving subcommands.  See
+         ;; https://github.com/fish-shell/fish-shell/issues/4093.
+         (prompt (if (not (member (car tokens) '("sudo" "*sudo" "env" "*env")))
+                     raw-prompt
+                   (setq tokens (cdr tokens))
+                   (while (and tokens
+                               (or (string-match "^-.*" (car tokens))
+                                   (string-match "=" (car tokens))))
+                     ;; Skip env/sudo parameters, like -u and LC_ALL=C.
+                     (setq tokens (cdr tokens)))
+                   (if (and tokens (not (string-empty-p (car tokens))))
+                       (mapconcat 'identity tokens " ")
+                     ;; If there is no subcommand, then we
+                     ;; complete against the parent command.
+                     raw-prompt))))
+    ;; Eshell supports star-prefixed commands but not Fish:
+    ;; remove the star for fish-completion.
+    (setq prompt (replace-regexp-in-string "^[[:space:]]*\\*" "" prompt))
+    ;; Completion result can be a filename.  pcomplete expects
+    ;; cannonical file names (i.e. without '~') while fish preserves
+    ;; non-cannonical results.  If the result contains a directory,
+    ;; expand it.
+    (mapcar (lambda (e) (car (split-string e "\t")))
+            (split-string
+             (with-output-to-string
+               (with-current-buffer standard-output
+                 (call-process fish-completion-command nil '(t nil) nil
+                               "-c"
+                               (format "complete -C%s"
+                                       (shell-quote-argument prompt)))))
+             "\n" t))))
+
 (defun fish-completion-complete (raw-prompt)
   "Complete RAW-PROMPT (any string) using the fish shell.
 
@@ -111,47 +153,7 @@ If `fish-completion-fallback-on-bash-p' is non-nil and if the
 `bash-completion' package is available, fall back on bash in case
 no completion was found with fish."
   (while (pcomplete-here
-          (let ((comp-list
-                 (let* (;; Keep spaces at the end with OMIT-NULLS=nil in `split-string'.
-                        (toks (split-string raw-prompt split-string-default-separators nil))
-                        ;; The first non-empty `car' is the command.  Discard
-                        ;; leading empty strings.
-                        (tokens (progn (while (string= (car toks) "")
-                                         (setq toks (cdr toks)))
-                                       toks))
-                        ;; Fish does not support subcommand completion.  We make
-                        ;; a special case of 'sudo' and 'env' since they are
-                        ;; the most common cases involving subcommands.  See
-                        ;; https://github.com/fish-shell/fish-shell/issues/4093.
-                        (prompt (if (not (member (car tokens) '("sudo" "*sudo" "env" "*env")))
-                                    raw-prompt
-                                  (setq tokens (cdr tokens))
-                                  (while (and tokens
-                                              (or (string-match "^-.*" (car tokens))
-                                                  (string-match "=" (car tokens))))
-                                    ;; Skip env/sudo parameters, like -u and LC_ALL=C.
-                                    (setq tokens (cdr tokens)))
-                                  (if (and tokens (not (string-empty-p (car tokens))))
-                                      (mapconcat 'identity tokens " ")
-                                    ;; If there is no subcommand, then we
-                                    ;; complete against the parent command.
-                                    raw-prompt))))
-                   ;; Eshell supports star-prefixed commands but not Fish:
-                   ;; remove the star for fish-completion.
-                   (setq prompt (replace-regexp-in-string "^[[:space:]]*\\*" "" prompt))
-                   ;; Completion result can be a filename.  pcomplete expects
-                   ;; cannonical file names (i.e. without '~') while fish preserves
-                   ;; non-cannonical results.  If the result contains a directory,
-                   ;; expand it.
-                   (mapcar (lambda (e) (car (split-string e "\t")))
-                           (split-string
-                            (with-output-to-string
-                              (with-current-buffer standard-output
-                                (call-process fish-completion-command nil '(t nil) nil
-                                              "-c"
-                                              (format "complete -C%s"
-                                                      (shell-quote-argument prompt)))))
-                            "\n" t)))))
+          (let ((comp-list (fish-completion--list-completions raw-prompt)))
             (when (and fish-completion-fallback-on-bash-p
                        (or (not comp-list)
                            (file-exists-p (car comp-list)))
