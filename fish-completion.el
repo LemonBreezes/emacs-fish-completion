@@ -145,18 +145,22 @@ https://github.com/fish-shell/fish-shell/issues/4093.")
           (mapconcat 'identity tokens " ")
         ;; If there is no subcommand, then we
         ;; complete against the parent command.
-        (message "NO SUB %S" prompt)
         prompt))))
+
+(defun fish-completion--list-completions-with-desc (raw-prompt)
+  "Return list of completion candidates for RAW-PROMPT.
+The candidates include the description."
+  (let ((prompt (fish-completion--normalize-prompt raw-prompt)))
+    (fish-completion--call fish-completion-command
+                           "-c" (format "complete -C%s"
+                                        (shell-quote-argument prompt)))))
 
 (defun fish-completion--list-completions (raw-prompt)
   "Return list of completion candidates for RAW-PROMPT."
-  (let ((prompt (fish-completion--normalize-prompt raw-prompt)))
-    (mapcar (lambda (e) (car (split-string e "\t")))
-            (split-string
-             (fish-completion--call fish-completion-command
-                                    "-c" (format "complete -C%s"
-                                                 (shell-quote-argument prompt)))
-             "\n" t))))
+  (mapcar (lambda (e) (car (split-string e "\t")))
+          (split-string
+           (fish-completion--list-completions-with-desc raw-prompt)
+           "\n" t)))
 
 (defun fish-completion--maybe-use-bash (comp-list)
   "If COMP-LIST is empty, return a completion list with Bash.
