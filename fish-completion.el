@@ -147,7 +147,7 @@ no completion was found with fish."
                            (split-string
                             (with-output-to-string
                               (with-current-buffer standard-output
-                                (call-process fish-completion-command nil t nil
+                                (call-process fish-completion-command nil '(t nil) nil
                                               "-c"
                                               (format "complete -C%s"
                                                       (shell-quote-argument prompt)))))
