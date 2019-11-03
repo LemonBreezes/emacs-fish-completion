@@ -1,10 +1,11 @@
-;;; fish-completion.el --- Add fish completion to pcomplete (shell and Eshell)  -*- lexical-binding: t -*-
+;;; fish-completion.el --- Fish completion for pcomplete (shell and Eshell)  -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2017-2019 Pierre Neidhardt
 
 ;; Author: Pierre Neidhardt <mail@ambrevar.xyz>
 ;; Homepage: https://gitlab.com/Ambrevar/emacs-fish-completion
 ;; Version: 1.0
+;; Package-Requires: ((emacs "25.1"))
 
 ;; This file is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published
@@ -44,6 +45,7 @@
 
 (require 'em-cmpl)
 (require 'subr-x)
+(require 'seq)
 
 (defgroup fish-completion nil
   "Settings for fish completion in Eshell and Shell."
@@ -87,7 +89,8 @@ In `eshell', fish completion is only used when `pcomplete' fails."
 
 (define-globalized-minor-mode global-fish-completion-mode
   fish-completion-mode
-  turn-on-fish-completion-mode)
+  turn-on-fish-completion-mode
+  :require 'fish-completion)
 
 (defun fish-completion-shell-complete ()
   "Complete `shell' or `eshell' prompt with `fish-completion-complete'.
@@ -141,10 +144,7 @@ since we rely on a local fish instance to suggest the completions."
     ;; Eshell supports star-prefixed commands but not Fish:
     ;; remove the star for fish-completion.
     (setq prompt (replace-regexp-in-string "^[[:space:]]*\\*" "" prompt))
-    ;; Completion result can be a filename.  pcomplete expects
-    ;; cannonical file names (i.e. without '~') while fish preserves
-    ;; non-cannonical results.  If the result contains a directory,
-    ;; expand it.
+    ;; Discard descriptions.
     (mapcar (lambda (e) (car (split-string e "\t")))
             (split-string
              (fish-completion--call fish-completion-command
@@ -173,6 +173,10 @@ no completion was found with fish."
                             (nth 2 (bash-completion-dynamic-complete-nocomint
                                     (save-excursion (eshell-bol) (point)) (point))))))
             (if (and comp-list (file-exists-p (car comp-list)))
+                ;; Completion result can be a filename.  pcomplete expects
+                ;; cannonical file names (i.e. without '~') while fish preserves
+                ;; non-cannonical results.  If the result contains a file, use
+                ;; pcomplete completion instead of fish.
                 (pcomplete-dirs-or-entries)
               ;; Remove trailing spaces to avoid it being converted into "\ ".
               (mapcar 'string-trim-right comp-list))))))
