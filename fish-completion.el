@@ -136,11 +136,11 @@ https://github.com/fish-shell/fish-shell/issues/4093.")
     (if (not (member (car tokens) fish-completion--parent-commands))
         prompt
       (setq tokens (cdr tokens))
-      (while (and tokens
-                  (or (string-match "^-.*" (car tokens))
-                      (string-match "=" (car tokens))))
         ;; Skip env/sudo parameters, like -u and LC_ALL=C.
-        (setq tokens (cdr tokens)))
+      (setq tokens (seq-drop-while (lambda (e)
+                                     (or (string-match "^-.*" e)
+                                         (string-match "=" e)))
+                                   tokens))
       (if (and tokens (not (string-empty-p (car tokens))))
           (mapconcat 'identity tokens " ")
         ;; If there is no subcommand, then we
