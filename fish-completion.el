@@ -51,7 +51,7 @@
   "Settings for fish completion in Eshell and Shell."
   :group 'shell)
 
-(defvar fish-completion-command "fish"
+(defvar fish-completion-command (executable-find "fish")
   "The `fish' executable.")
 
 (defvar fish-completion--old-completion-function nil)
@@ -64,6 +64,11 @@ This requires the bash-completion package."
   :type 'boolean
   :group 'fish-completion)
 
+(defcustom fish-completion-inhibit-missing-fish-command-warning nil
+  "Inhibit emitting a warning when `fish-command' is nil."
+  :type 'boolean
+  :group 'fish-completion)
+
 ;;;###autoload
 (define-minor-mode fish-completion-mode
   "Turn on/off fish shell completion in all future shells or Eshells.
@@ -71,7 +76,11 @@ This requires the bash-completion package."
 In `shell', completion is replaced by fish completion.
 In `eshell', fish completion is only used when `pcomplete' fails."
   :init-value nil
-  (if (not fish-completion-mode)
+  (if (progn
+        (unless (or fish-completion-inhibit-missing-fish-command-warning
+                    fish-completion-command)
+          (warn "Fish is not installed. fish-completion-mode will silently fall back to Bash for completions."))
+        (setq pcomplete-default-completion-function fish-completion--old-completion-function))
       (setq pcomplete-default-completion-function fish-completion--old-completion-function)
     (setq fish-completion--old-completion-function pcomplete-default-completion-function
           pcomplete-default-completion-function 'fish-completion-shell-complete)))
@@ -151,9 +160,10 @@ https://github.com/fish-shell/fish-shell/issues/4093.")
   "Return list of completion candidates for RAW-PROMPT.
 The candidates include the description."
   (let ((prompt (fish-completion--normalize-prompt raw-prompt)))
-    (fish-completion--call fish-completion-command
-                           "-c" (format "complete -C%s"
-                                        (shell-quote-argument prompt)))))
+    (when fish-completion-command
+      (fish-completion--call fish-completion-command
+              "-c" (format "complete -C%s"
+                           (shell-quote-argument prompt))))))
 
 (defun fish-completion--list-completions (raw-prompt)
   "Return list of completion candidates for RAW-PROMPT."
