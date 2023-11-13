@@ -1,3 +1,9 @@
+# Repository information
+
+Hi. This is the new home of
+[emacs-fish-completion](https://gitlab.com/ambrevar/emacs-fish-completion) which
+was previously maintained by @Ambrevar. The new maintainer is @LemonBreezes.
+
 # Emacs fish completion
 
 This package extends the `pcomplete` completion framework with completion from the
