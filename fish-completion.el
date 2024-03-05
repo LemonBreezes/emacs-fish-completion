@@ -168,9 +168,8 @@ The candidates include the description."
 (defun fish-completion--list-completions (raw-prompt)
   "Return list of completion candidates for RAW-PROMPT."
   (mapcar (lambda (e) (car (split-string e "\t")))
-          (split-string
-           (fish-completion--list-completions-with-desc raw-prompt)
-           "\n" t)))
+          (let ((candidates (fish-completion--list-completions-with-desc raw-prompt)))
+            (when candidates (split-string candidates "\n" t)))))
 
 (defun fish-completion--maybe-use-bash (comp-list)
   "If COMP-LIST is empty, return a completion list with Bash.
