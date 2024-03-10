@@ -93,7 +93,7 @@ In `eshell', fish completion is only used when `pcomplete' fails."
   ;; `eshell-mode-hook' locally (first session only).  Other Eshell sessions do
   ;; not need this workaround.
   (when (eq major-mode 'eshell-mode)
-      (add-hook 'eshell-mode-hook (lambda () (fish-completion-mode 1)) nil t))
+    (add-hook 'eshell-mode-hook (lambda () (fish-completion-mode 1)) nil t))
   (fish-completion-mode 1))
 
 (define-globalized-minor-mode global-fish-completion-mode
@@ -145,7 +145,7 @@ https://github.com/fish-shell/fish-shell/issues/4093.")
     (if (not (member (car tokens) fish-completion--parent-commands))
         prompt
       (setq tokens (cdr tokens))
-        ;; Skip env/sudo parameters, like -u and LC_ALL=C.
+      ;; Skip env/sudo parameters, like -u and LC_ALL=C.
       (setq tokens (seq-drop-while (lambda (e)
                                      (or (string-match "^-.*" e)
                                          (string-match "=" e)))
@@ -162,8 +162,8 @@ The candidates include the description."
   (let ((prompt (fish-completion--normalize-prompt raw-prompt)))
     (when fish-completion-command
       (fish-completion--call fish-completion-command
-              "-c" (format "complete -C%s"
-                           (shell-quote-argument prompt))))))
+                             "-c" (format "complete -C%s"
+                                          (shell-quote-argument prompt))))))
 
 (defun fish-completion--list-completions (raw-prompt)
   "Return list of completion candidates for RAW-PROMPT."
