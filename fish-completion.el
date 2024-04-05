@@ -64,6 +64,14 @@ This requires the bash-completion package."
   :type 'boolean
   :group 'fish-completion)
 
+(defcustom fish-completion-prefer-bash-completion nil
+  "Prefer Bash completion over Fish completion.
+
+If non-nil, Fish completion will be used as a fallback when Bash
+completion fails."
+  :type 'boolean
+  :group 'fish-completion)
+
 (defcustom fish-completion-inhibit-missing-fish-command-warning nil
   "Inhibit emitting a warning when `fish-command' is nil."
   :type 'boolean
@@ -171,43 +179,39 @@ The candidates include the description."
           (let ((candidates (fish-completion--list-completions-with-desc raw-prompt)))
             (when candidates (split-string candidates "\n" t)))))
 
+(defun fish-completion--strip-bash-escapes (completions)
+  "Remove unnecessary backslashes from COMPLETIONS inserted by bash-completion."
+  (mapcar (lambda (s)
+            (replace-regexp-in-string (regexp-quote "\\") "" s))
+          completions))
+
+(defun fish-completion-get-bash-completions ()
+  "Get a list of completions from Bash."
+  (when (require 'bash-completion nil 'noerror)
+    (fish-completion--strip-bash-escapes
+     (nth 2 (bash-completion-dynamic-complete-nocomint
+             (save-excursion (eshell-bol)) (point))))))
+
 (defun fish-completion--maybe-use-bash (comp-list)
-  "If COMP-LIST is empty, return a completion list with Bash.
-
-If COMP-LIST contains file names, it may mean that fish has used
-its fallback completion because it does not know better.
-In this case, we fall back on Bash as well.
-
-Bash is only used if `fish-completion-fallback-on-bash-p' is non-nil and the
-bash-completion package is available.."
+  "Maybe use Bash for completion if COMP-LIST is not adequate."
   (if (and fish-completion-fallback-on-bash-p
-           (or (not comp-list)
-               (file-exists-p (car comp-list)))
-           (require 'bash-completion nil 'noerror))
-      (setq comp-list
-            (mapcar (lambda (s)
-                      ;; bash-completion inserts "\" to escape white
-                      ;; spaces, we need to remove them since
-                      ;; pcomplete does that too.
-                      (replace-regexp-in-string (regexp-quote "\\") "" s))
-                    (nth 2 (bash-completion-dynamic-complete-nocomint
-                            (save-excursion (eshell-bol) (point)) (point)))))
+           (not fish-completion-prefer-bash-completion)
+           (or (null comp-list)
+               (file-exists-p (car comp-list))))
+      (fish-completion-get-bash-completions)
     comp-list))
 
 (defun fish-completion-complete (raw-prompt)
-  "Complete RAW-PROMPT (any string) using the fish shell.
-Fall back on bash with `fish-completion--maybe-use-bash'."
-  (while (pcomplete-here
-          (let ((comp-list (fish-completion--list-completions raw-prompt)))
-            (setq comp-list (fish-completion--maybe-use-bash comp-list))
-            (if (and comp-list (file-exists-p (car comp-list)))
-                ;; Completion result can be a filename.  pcomplete expects
-                ;; cannonical file names (i.e. without '~') while fish preserves
-                ;; non-cannonical results.  If the result contains a file, use
-                ;; pcomplete completion instead of fish.
-                (pcomplete-dirs-or-entries)
-              ;; Remove trailing spaces to avoid it being converted into "\ ".
-              (mapcar 'string-trim-right comp-list))))))
+  "Complete RAW-PROMPT using Fish with possible fallback or preference to Bash."
+  (let ((bash-comp-list (and fish-completion-prefer-bash-completion
+                             (fish-completion-get-bash-completions))))
+    (while (pcomplete-here
+            (or bash-comp-list
+                (let ((comp-list (fish-completion--maybe-use-bash
+                                  (fish-completion--list-completions raw-prompt))))
+                  (if (and comp-list (file-exists-p (car comp-list)))
+                      (pcomplete-dirs-or-entries) ;; Use pcomplete for file completion
+                    (mapcar 'string-trim-right comp-list))))))))
 
 (provide 'fish-completion)
 ;;; fish-completion.el ends here
