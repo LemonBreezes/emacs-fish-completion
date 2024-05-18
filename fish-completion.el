@@ -188,9 +188,10 @@ The candidates include the description."
 (defun fish-completion-get-bash-completions ()
   "Get a list of completions from Bash."
   (when (require 'bash-completion nil 'noerror)
-    (fish-completion--strip-bash-escapes
-     (nth 2 (bash-completion-dynamic-complete-nocomint
-             (save-excursion (eshell-bol)) (point))))))
+    (mapcar #'string-trim-right
+            (fish-completion--strip-bash-escapes
+             (nth 2 (bash-completion-dynamic-complete-nocomint
+                     (save-excursion (eshell-bol)) (point)))))))
 
 (defun fish-completion--maybe-use-bash (comp-list)
   "Maybe use Bash for completion if COMP-LIST is not adequate."
